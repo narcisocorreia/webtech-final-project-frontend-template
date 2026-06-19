@@ -1,0 +1,81 @@
+<section class="page-heading">
+  <div>
+    @if (historyMode()) {
+      <p class="eyebrow">Histórico de corridas</p>
+      <h1>História completa</h1>
+    } @else {
+      <p class="eyebrow">Temporada {{ season() }}</p>
+      <h1>Dashboard de corridas</h1>
+    }
+  </div>
+
+  <div class="heading-actions">
+    <label class="season-picker">
+      <span>Temporada</span>
+      <select [value]="season()" (change)="selectSeason($event)" [disabled]="historyMode()">
+        @for (year of seasons; track year) {
+          <option [value]="year">{{ year }}</option>
+        }
+      </select>
+    </label>
+
+    @if (!historyMode()) {
+      <button class="secondary-button" (click)="showHistory()">Mostrar História</button>
+    } @else {
+      <button class="secondary-button" (click)="hideHistory()">Fechar História</button>
+    }
+    <span class="stat-pill">{{ races().length }} Grandes Prêmios</span>
+  </div>
+</section>
+
+@if (error()) {
+  <section class="empty-state compact-empty">
+    <h2>{{ error() }}</h2>
+    <p>Verifique se o servidor backend está rodando e se a temporada selecionada está disponível.</p>
+  </section>
+} @else if (isLoading()) {
+  <section class="empty-state compact-empty">
+    <h2>Carregando corridas...</h2>
+    <p>Aguarde enquanto buscamos os resultados da temporada {{ season() }}.</p>
+  </section>
+} @else if (races().length === 0) {
+  <section class="empty-state compact-empty">
+    <h2>Nenhuma corrida encontrada para {{ season() }}</h2>
+    <p>Tente outra temporada anterior ou avise se os dados não estiverem disponíveis.</p>
+  </section>
+} @else {
+  <section class="race-grid">
+    @for (race of races(); track race.season + '-' + race.round) {
+      <article class="race-card">
+        @if (isRaceCompleted(race)) {
+          <span class="status-badge completed">Concluída</span>
+        } @else {
+          <span class="status-badge pending">Ainda não realizada</span>
+        }
+        <div>
+          <p class="round">Round {{ race.round }}</p>
+          <h2>{{ race.raceName }}</h2>
+          @if (isRaceCompleted(race)) {
+            <small class="completed-label">Concluída — resultados disponíveis</small>
+          } @else {
+            <small class="pending-label">Ainda não realizada</small>
+          }
+          <p>{{ race.Circuit.circuitName }}</p>
+        </div>
+
+        <dl class="meta-list">
+          <div>
+            <dt>Data</dt>
+            <dd>{{ race.date }}</dd>
+          </div>
+          <div>
+            <dt>Local</dt>
+            <dd>{{ race.Circuit.Location.locality }}, {{ race.Circuit.Location.country }}</dd>
+          </div>
+        </dl>
+
+        <a class="primary-button compact" [routerLink]="['/races', historyMode() ? race.season : season(), race.round]">Ver detalhes</a>
+      </article>
+    }
+  </section>
+}

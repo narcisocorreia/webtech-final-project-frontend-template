@@ -1,0 +1,196 @@
+<div class="header">
+  <div>
+    <p class="eyebrow">F1 Fantasy</p>
+    <h1>Monte a sua equipa</h1>
+  </div>
+
+  <div class="status-pill">{{ selectedDriverCount() }}/5 Drivers • {{ selectedConstructorCount() }}/2 Construtores</div>
+</div>
+
+<div class="layout">
+  <section class="panel">
+    <div class="budget-overview">
+      <div class="budget-card">
+        <strong>Orçamento total</strong>
+        <span>$100.0M</span>
+      </div>
+      <div class="budget-card">
+        <strong>Orçamento usado</strong>
+        <span>{{ usedBudget().toFixed(1) }}M</span>
+      </div>
+      <div class="budget-card">
+        <strong>Orçamento restante</strong>
+        <span>{{ remainingBudget().toFixed(1) }}M</span>
+      </div>
+    </div>
+
+    <div class="team-heading">
+      <div>
+        <h2>A Minha Equipa</h2>
+        <p>{{ selectedDriverCount() }} pilotos e {{ selectedConstructorCount() }} construtores escolhidos</p>
+      </div>
+      <span>{{ remainingBudget().toFixed(1) }}M livres</span>
+    </div>
+
+    <div class="slots">
+      <div class="slot-group">
+        <p class="slot-label">Pilotos</p>
+        @for (driver of selectedDrivers(); track $index; let idx = $index) {
+          <div class="slot" [class.occupied]="driver !== null">
+            <span class="slot-number">{{ idx + 1 }}</span>
+
+            @if (driver) {
+              @if (driverPhotoUrl(driver) | async; as photoUrl) {
+                <img class="slot-icon driver-image" [src]="photoUrl" [alt]="driver.name" />
+              } @else {
+                <div class="slot-icon">{{ driver.initials }}</div>
+              }
+            } @else {
+              <div class="slot-icon empty">DR</div>
+            }
+
+            <div class="slot-body">
+              <h3>{{ driver?.name ?? 'Piloto vazio' }}</h3>
+              <p>{{ driver ? driver.team : 'Escolha um piloto para este slot' }}</p>
+            </div>
+
+            <div class="slot-meta">
+              <span>{{ driver ? formatPrice(driver.price) : 'Livre' }}</span>
+              <small>{{ driver ? driver.points + ' pts' : 'Obrigatório' }}</small>
+            </div>
+
+            @if (driver) {
+              <button class="remove-slot" type="button" (click)="removeDriver(idx)" aria-label="Remover piloto">✕</button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="slot-group">
+        <p class="slot-label">Construtores</p>
+        @for (item of selectedConstructors(); track $index; let idx = $index) {
+          <div class="slot constructor-slot" [class.occupied]="item !== null">
+            <span class="slot-number">{{ idx + 1 }}</span>
+
+            @if (item) {
+              @if (constructorLogoUrl(item) | async; as logoUrl) {
+                <img
+                  class="slot-icon constructor-logo"
+                  [src]="logoUrl"
+                  [alt]="item.name + ' logo'"
+                  (error)="markConstructorLogoBroken(item.id)"
+                />
+              } @else {
+                <div class="slot-icon">{{ item.initials }}</div>
+              }
+            } @else {
+              <div class="slot-icon empty">C</div>
+            }
+
+            <div class="slot-body">
+              <h3>{{ item?.name ?? 'Construtor vazio' }}</h3>
+              <p>{{ item ? item.nationality : 'Escolha uma equipa para este slot' }}</p>
+            </div>
+
+            <div class="slot-meta">
+              <span>{{ item ? formatPrice(item.price) : 'Livre' }}</span>
+              <small>{{ item ? item.points + ' pts' : 'Obrigatório' }}</small>
+            </div>
+
+            @if (item) {
+              <button class="remove-slot" type="button" (click)="removeConstructor(idx)" aria-label="Remover construtor">✕</button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>
+        <p style="margin:0; color:#94a3b8">Estado da equipa</p>
+        <strong>{{ isTeamValid() ? 'Equipa pronta para continuar' : 'Complete a equipa dentro do orçamento' }}</strong>
+        @if (saveMessage()) {
+          <p style="margin:8px 0 0; color:#86efac; font-weight:700">{{ saveMessage() }}</p>
+        }
+      </div>
+      <button class="continue-button" [disabled]="!isTeamValid()" type="button" (click)="continue()">Continue</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="tab-list">
+      <button type="button" class="tab" [class.active]="activeTab() === 'drivers'" (click)="selectTab('drivers')">Drivers</button>
+      <button type="button" class="tab" [class.active]="activeTab() === 'constructors'" (click)="selectTab('constructors')">Construtores</button>
+    </div>
+
+    <div class="search-bar">
+      <input
+        type="search"
+        placeholder="Procurar por nome ou equipa"
+        [value]="searchTerm()"
+        (input)="searchTerm.set($any($event.target).value)"
+        [disabled]="isLoading()"
+      />
+    </div>
+
+    @if (isLoading()) {
+      <div style="color:#cbd5e1; margin-bottom:18px;">A carregar pilotos e equipas de 2026...</div>
+    }
+    @if (error()) {
+      <div style="color:#fca5a5; margin-bottom:18px;">{{ error() }}</div>
+    }
+
+    <div class="selection-list">
+      @if (activeTab() === 'drivers') {
+        @for (driver of filteredDrivers(); track driver.id) {
+        <article class="item-linha">
+          <div class="avatar-container">
+            @if (driverPhotoUrl(driver) | async; as photoUrl) {
+              <img class="avatar-circle driver-image" [src]="photoUrl" [alt]="driver.name" />
+            } @else {
+              <div class="avatar-circle">{{ driver.initials }}</div>
+            }
+          </div>
+
+          <div class="driver-info">
+            <h3>{{ driver.name }}</h3>
+            <p>{{ driver.team }} • {{ driver.points }} pts</p>
+          </div>
+
+          <div class="driver-price">
+            <span>{{ formatPrice(driver.price) }}</span>
+            <button type="button" [disabled]="!canAddDriver(driver)" (click)="addDriver(driver)">+</button>
+          </div>
+        </article>
+        }
+      } @else {
+        @for (constructor of filteredConstructors(); track constructor.id) {
+        <article class="item-linha">
+          <div class="avatar-container">
+            @if (constructorLogoUrl(constructor) | async; as logoUrl) {
+              <img
+                [src]="logoUrl"
+                class="team-logo"
+                [alt]="constructor.name + ' logo'"
+                (error)="markConstructorLogoBroken(constructor.id)"
+              />
+            } @else {
+              <div class="avatar-circle constructor-fallback">{{ constructor.initials }}</div>
+            }
+          </div>
+
+          <div class="driver-info">
+            <h3>{{ constructor.name }}</h3>
+            <p>{{ constructor.nationality }} • {{ constructor.points }} pts</p>
+          </div>
+
+          <div class="driver-price">
+            <span>{{ formatPrice(constructor.price) }}</span>
+            <button type="button" [disabled]="!canAddConstructor(constructor)" (click)="addConstructor(constructor)">+</button>
+          </div>
+        </article>
+        }
+      }
+    </div>
+  </section>
+</div>
